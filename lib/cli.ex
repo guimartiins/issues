@@ -5,18 +5,22 @@ defmodule Issues.CLI do
   table of the last _n_ issues in a github project
   """
 
+  alias Issues.GithubIssues
+
   @default_count 4
 
   def run(argv) do
-    parse_args(argv)
+    argv
+    |> parse_args()
+    |> process()
   end
 
   @doc """
   `argv` can be -h or --help, which returns :help
 
-  Otherwise it is a github username, project name, and (optionally)
   the number of entries to format.
 
+  Otherwise it is a github username, project name, and (optionally)
   Return a tuple of `{ user, project, count }`, or `:help` if help was given.
   """
   def parse_args(argv) do
@@ -25,6 +29,26 @@ defmodule Issues.CLI do
     |> args_to_internal_representation()
   end
 
+  def process(:help) do
+    IO.puts("""
+      usage: issues <user> <project> [count | #{@default_count}]
+    """)
+
+    System.halt(0)
+  end
+
+  def process({user, project, _count}) do
+    GithubIssues.fetch(user, project)
+    |> handle_response()
+    |> sort_by_desc()
+  end
+
+  def sort_by_desc(issue) do
+    issue
+    |> Enum.sort(fn issue_one, issue_two -> issue_one["created_at"] >= issue_two["created_at"] end)
+  end
+
+  # private fns
   defp args_to_internal_representation([user, project, count]) do
     {user, project, String.to_integer(count)}
   end
@@ -34,4 +58,11 @@ defmodule Issues.CLI do
   end
 
   defp args_to_internal_representation(_), do: :help
+
+  defp handle_response({:ok, body}), do: body
+
+  defp handle_response({:error, error}) do
+    IO.puts("Error fetching from Github: #{error["message"]}")
+    System.halt(2)
+  end
 end
