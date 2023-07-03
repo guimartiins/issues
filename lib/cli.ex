@@ -6,6 +6,7 @@ defmodule Issues.CLI do
   """
 
   alias Issues.GithubIssues
+  alias Issues.TableFormatter
 
   @default_count 4
 
@@ -42,6 +43,7 @@ defmodule Issues.CLI do
     |> handle_response()
     |> sort_by_desc()
     |> last(count)
+    |> TableFormatter.print_table_for_columns(["number", "created_at", "title"])
   end
 
   def last(list, count) do
